@@ -24,6 +24,11 @@ local interval_map = {
     ["1000h"] = 8,
 }
 
+local ENTITY_NAMES = {
+    ["time-series"] = true,
+    ["time-series-rate"] = true,
+}
+
 local VIEWPORT_WIDTH = 1000
 local VIEWPORT_HEIGHT = 500
 
@@ -52,9 +57,20 @@ local function new_registry_entry(entity)
         }
     end
     return {
+        type="gauge",
         entity=entity,
         intervals=intervals,
     }
+end
+
+local function new_registry_entry_counter(entity)
+    local entry = new_registry_entry(entity)
+    entry.type = "rate"
+    entry.counters = {}
+    entry.counter_index = 0
+    -- 10s moving average.
+    entry.counter_length = 600
+    return entry
 end
 
 -- taken from data/core/prototypes/style.lua:5724
@@ -115,10 +131,14 @@ local function render_gui(interval, gui, datasets, ordered_sums, min_y, max_y)
                 name = "bar" .. i,
                 value = ratio,
             }
+            local caption = string.format("%.2f", value)
+            if gui.entry.type == "rate" then
+                caption = caption .. "/s"
+            end
             table.add{
                 type = "label",
                 name = "label" .. i,
-                caption = string.format("%.2f", value)
+                caption = caption,
             }
             if i <= MAX_LINES then
                 bar.style.color = colors[i]
@@ -234,13 +254,7 @@ local function render_interval(interval)
     end
 end
 
-local function add_datapoint(intervals, signals)
-    local value = {}
-    if signals then
-        for _, signal in ipairs(signals) do
-            value[signal.signal.type .. "/" .. signal.signal.name] = signal.count
-        end
-    end
+local function add_datapoint(intervals, value)
     for interval_index, interval in ipairs(intervals) do
         local index = interval.index
         local steps = interval.steps
@@ -287,6 +301,49 @@ local function add_datapoint(intervals, signals)
     end
 end
 
+-- 2^50, more than enough to store the sum of 600 int32s.
+local MAX_COUNTER = 1125899906842624
+
+local function add_counter_datapoint(entry, value)
+    local counters = entry.counters
+    local index = entry.counter_index
+    local prev_index = index
+    if prev_index == 0 then
+        prev_index = entry.counter_length
+    end
+    local prev = counters[prev_index] or {}
+    local current = {}
+    for k, v in pairs(prev) do
+        current[k] = v
+    end
+    for k, v in pairs(value) do
+        -- Ignore negative values; this counter is monotonic.
+        if v >= 0 then
+            local sum = (current[k] or 0) + v
+            if sum > MAX_COUNTER then
+                sum = sum - MAX_COUNTER
+            end
+            current[k] = sum
+        end
+    end
+    -- Insert the new value.
+    counters[index+1] = current
+    -- Advance the index.
+    entry.counter_index = (index + 1) % entry.counter_length
+    -- Compute 10 second moving average rate.
+    local rate = {}
+    local oldest_value = counters[entry.counter_index + 1] or {}
+    for k, v in pairs(current) do
+        local old = oldest_value[k] or 0
+        local delta = v - old
+        if delta < 0 then
+            delta = delta + MAX_COUNTER
+        end
+        rate[k] = delta / 10  -- convert per-10-second rate to per-second
+    end
+    add_datapoint(entry.intervals, rate)
+end
+
 --interval = {
 --    name = "5s",
 --    data = {...},
@@ -305,8 +362,13 @@ end
 
 --global.registry = {
 --    [entity_number] = {
+--        type="gauge" or "rate"
 --        entity=LuaEntity,
 --        intervals={interval...},
+--        -- these are used for type="rate"
+--        counters={...},
+--        counter_index=0,
+--        counter_length-600,
 --    }
 --}
 
@@ -324,23 +386,39 @@ local function on_tick(event)
     for entity_number, entry in pairs(global.registry) do
         local entity = entry.entity
         local signals = entity.get_merged_signals()
-        add_datapoint(entry.intervals, signals)
+        local value = {}
+        if signals then
+            for _, signal in ipairs(signals) do
+                value[signal.signal.type .. "/" .. signal.signal.name] = signal.count
+            end
+        end
+        if entry.type == "rate" then
+            add_counter_datapoint(entry, value)
+        else
+            add_datapoint(entry.intervals, value)
+        end
     end
 end
 
 local function on_place_entity(event)
     local entity = event.created_entity
-    if not entity.valid or entity.name ~= "time-series" then
+    if not entity.valid or not ENTITY_NAMES[entity.name] then
         return
     end
 
     entity.get_control_behavior().enabled = false
-    global.registry[entity.unit_number] = new_registry_entry(entity)
+    local entry
+    if entity.name == "time-series" then
+        entry = new_registry_entry(entity)
+    else
+        entry = new_registry_entry_counter(entity)
+    end
+    global.registry[entity.unit_number] = entry
 end
 
 local function on_remove_entity(event)
     local entity = event.entity
-    if not entity.valid or entity.name ~= "time-series" then
+    if not entity.valid or not ENTITY_NAMES[entity.name] then
         return
     end
 
@@ -458,17 +536,23 @@ end
 
 script.on_event(defines.events.on_gui_opened, function(event)
     local entity = event.entity
-    if event.gui_type ~= defines.gui_type.entity or not entity or entity.name ~= "time-series" then
+    if event.gui_type ~= defines.gui_type.entity or not entity or not ENTITY_NAMES[entity.name] then
         return
     end
 
     local entry = global.registry[entity.unit_number]
     local player = game.players[event.player_index]
 
+    local caption
+    if entry.type == "rate" then
+        caption = {"entity-name.time-series-rate"}
+    else
+        caption = {"entity-name.time-series"}
+    end
     local frame = player.gui.center.add{
         type = "frame",
         name = "time_series",
-        caption = {"entity-name.time-series"},
+        caption = caption,
         direction = "vertical",
     }
 
