@@ -398,6 +398,10 @@ end
 --    }
 --}
 
+local TYPE_MAP = {
+    virtual = "virtual-signal"
+}
+
 local function on_tick(event)
     for entity_number, entry in pairs(global.registry) do
         local entity = entry.entity
@@ -405,7 +409,8 @@ local function on_tick(event)
         local value = {}
         if signals then
             for _, signal in ipairs(signals) do
-                value[signal.signal.type .. "/" .. signal.signal.name] = signal.count
+                local signal_type = TYPE_MAP[signal.signal.type] or signal.signal.type
+                value[signal_type .. "/" .. signal.signal.name] = signal.count
             end
         end
         if entry.type == "rate" then
