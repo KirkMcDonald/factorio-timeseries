@@ -22,7 +22,7 @@ data:extend{
     {
         type = "item",
         name = "time-series",
-        icon = "__base__/graphics/icons/computer.png",
+        icon = "__timeseries__/graphics/icons/gauge.png",
         icon_size = 32,
         subgroup = "circuit-network",
         order = "d[other]-c[time-series]",
@@ -32,7 +32,7 @@ data:extend{
     {
         type = "item",
         name = "time-series-rate",
-        icon = "__base__/graphics/icons/computer.png",
+        icon = "__timeseries__/graphics/icons/rate.png",
         icon_size = 32,
         subgroup = "circuit-network",
         order = "d[other]-d[time-series-rate]",
@@ -43,7 +43,7 @@ data:extend{
         type = "technology",
         name = "time-series",
         icon_size = 128,
-        icon = "__base__/graphics/technology/circuit-network.png",
+        icon = "__timeseries__/graphics/time-series-tech.png",
         effects = {
             {
                 type = "unlock-recipe",
