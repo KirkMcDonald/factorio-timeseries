@@ -67,13 +67,33 @@ data:extend{
     }
 }
 
+local PREFIX = "__timeseries__/graphics/"
+
+local filenames = {
+    gauge = {im = PREFIX .. "blue.png",   hr = PREFIX .. "hr-blue.png"},
+    rate =  {im = PREFIX .. "yellow.png", hr = PREFIX .. "hr-yellow.png"},
+}
+
+local function change_filenames(entity, new_names)
+    local dirs = {"north", "east", "south", "west"}
+    for _, dir in ipairs(dirs) do
+        local sprite = entity.sprites[dir]
+        sprite.layers[1].filename = new_names.im
+        sprite.layers[1].hr_version.filename = new_names.hr
+    end
+end
+
 local time_series_entity = table.deepcopy(data.raw["constant-combinator"]["constant-combinator"])
 
 time_series_entity.name = "time-series"
 time_series_entity.icon = "__base__/graphics/icons/computer.png"
 time_series_entity.item_slot_count = 0
 
+change_filenames(time_series_entity, filenames.gauge)
+
 local time_series_rate_entity = table.deepcopy(time_series_entity)
 time_series_rate_entity.name = "time-series-rate"
+
+change_filenames(time_series_rate_entity, filenames.rate)
 
 data:extend{time_series_entity, time_series_rate_entity}
