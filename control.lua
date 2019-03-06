@@ -149,13 +149,29 @@ local function render_gui(interval, gui, datasets, ordered_sums, min_y, max_y)
     end
 end
 
-local function render_interval(interval)
+local function render_interval(intervals, interval_index)
+    local interval = intervals[interval_index]
     for player_index, gui in pairs(interval.guis) do
         gui.legend.clear()
     end
     local surface = global.surface
     local ttl = interval.ticks + 1
     local entity = interval.chunk.render_entity
+    if interval_index > 1 then
+        -- If the previous render was triggered mid-step by a GUI change,
+        -- destroy and re-create the render entity.
+        if interval.last_rendered_tick then
+            local tickdiff = game.tick - interval.last_rendered_tick
+            if tickdiff ~= 0 and tickdiff ~= interval.ticks then
+                entity.destroy()
+                entity = global.surface.create_entity{
+                    name = "pipe",
+                    position = interval.chunk.coord,
+                }
+                interval.chunk.render_entity = entity
+            end
+        end
+    end
     local dx = VIEWPORT_WIDTH / (interval.length - 1) / 32
     local x = -0.5
     -- The number of distinct signals stored in the interval.
@@ -279,7 +295,7 @@ local function add_datapoint(intervals, value)
         interval.index = (index + 1) % interval.length
         -- Render if being viewed.
         if interval.viewer_count > 0 then
-            render_interval(interval)
+            render_interval(intervals, interval_index)
         end
         if steps ~= nil and interval.index % steps == 0 then
             -- compute consolidation to move into next interval
@@ -569,7 +585,6 @@ script.on_event(defines.events.on_gui_opened, function(event)
         direction = "horizontal",
     }
     gui.buttons = button_flow
-    local intervals = global.registry[entity.unit_number]
     for i, interval in ipairs(interval_defs) do
         button_flow.add{
             type = "button",
@@ -611,7 +626,7 @@ script.on_event(defines.events.on_gui_opened, function(event)
 
     global.gui[player.index] = gui
     
-    render_interval(interval)
+    render_interval(entry.intervals, interval_index)
     --game.print("opened gui, viewer count = " .. interval.viewer_count)
 end)
 
@@ -655,7 +670,7 @@ script.on_event(defines.events.on_gui_click, function(event)
     }
     gui.camera.position = camera_position
 
-    render_interval(interval)
+    render_interval(entry.intervals, new_index)
 
     --game.print("pressed " .. event.element.name)
 end)
