@@ -87,12 +87,14 @@ local time_series_entity = table.deepcopy(data.raw["constant-combinator"]["const
 
 time_series_entity.name = "time-series"
 time_series_entity.icon = "__base__/graphics/icons/computer.png"
+time_series_entity.minable.result = "time-series"
 time_series_entity.item_slot_count = 0
 
 change_filenames(time_series_entity, filenames.gauge)
 
 local time_series_rate_entity = table.deepcopy(time_series_entity)
 time_series_rate_entity.name = "time-series-rate"
+time_series_rate_entity.minable.result = "time-series-rate"
 
 change_filenames(time_series_rate_entity, filenames.rate)
 
