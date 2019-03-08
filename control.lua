@@ -342,13 +342,14 @@ local function add_counter_datapoint(entry, value)
             current[k] = sum
         end
     end
+    -- Get oldest value.
+    local oldest_value = counters[index + 1] or {}
     -- Insert the new value.
     counters[index+1] = current
     -- Advance the index.
     entry.counter_index = (index + 1) % entry.counter_length
     -- Compute 10 second moving average rate.
     local rate = {}
-    local oldest_value = counters[entry.counter_index + 1] or {}
     for k, v in pairs(current) do
         local old = oldest_value[k] or 0
         local delta = v - old
