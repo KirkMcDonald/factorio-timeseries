@@ -2,7 +2,7 @@ data:extend{
     {
         type = "recipe",
         name = "time-series",
-        enabled = "true",
+        enabled = "false",
         ingredients = {
             {"electronic-circuit", 5},
             {"copper-cable", 5},
@@ -12,7 +12,7 @@ data:extend{
     {
         type = "recipe",
         name = "time-series-rate",
-        enabled = "true",
+        enabled = "false",
         ingredients = {
             {"electronic-circuit", 5},
             {"copper-cable", 5},
