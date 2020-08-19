@@ -455,7 +455,11 @@ script.on_init(function()
     -- Next chunk coordinate to assign.
     global.next_chunk_x = 0
     global.next_chunk_y = 0
-    global.surface = game.create_surface("timeseries_surface", {width = 2, height = 2})
+    local surface = get.get_surface("timeseries_surface")
+    if surface == nil then
+        surface = game.create_surface("timeseries_surface", {width = 2, height = 2})
+    end
+    global.surface = surface
     global.surface.daytime = 0.5
     global.surface.freeze_daytime = true
     global.data_version = 1
