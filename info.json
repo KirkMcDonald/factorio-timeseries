@@ -1,11 +1,11 @@
 {
     "name": "timeseries",
-    "version": "0.3.3",
+    "version": "0.3.4",
     "title": "Time Series Graphs",
     "author": "Kirk McDonald",
     "contact": "",
     "homepage": "",
-    "factorio_version": "0.17",
-    "dependencies": ["base >= 0.17"],
+    "factorio_version": "1.0",
+    "dependencies": ["base >= 1.0.0"],
     "description": "Adds an entity for recording and displaying time series data."
 }
